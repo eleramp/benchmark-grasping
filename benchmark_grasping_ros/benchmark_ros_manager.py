@@ -18,10 +18,12 @@ from sensor_msgs.msg import Image, PointCloud2, CameraInfo
 from geometry_msgs.msg import Transform
 from std_msgs.msg import Bool
 import tf2_ros
+from benchmark_grasping.base.transformations import quaternion_to_matrix, matrix_to_quaternion
 
 from benchmark_grasping_ros.srv import *
+from benchmark_grasping_ros.msg import BenchmarkGrasp
 
-from dexnet_ros.msg import GQCNNGrasp
+from panda_simple_grasp_service.srv import PandaGrasp
 
 import numpy as np
 
@@ -39,7 +41,7 @@ GRASP_PLANNER_SRV = {
 
 
 class BenchmarkGraspingManager(object):
-    def __init__(self, grasp_planner_service_name, grasp_planner_service, user_cmd_service_name, verbose=False):
+    def __init__(self, grasp_planner_service_name, grasp_planner_service, user_cmd_service_name, panda_service_name, verbose=False):
 
         self._verbose = verbose
 
@@ -53,34 +55,47 @@ class BenchmarkGraspingManager(object):
         self._grasp_planner = rospy.ServiceProxy(grasp_planner_service_name, self._grasp_planner_srv)
         rospy.loginfo("BenchmarkGraspingManager: Connected with service {}".format(grasp_planner_service_name))
 
+        # --- panda service --- #
+        rospy.wait_for_service(panda_service_name, timeout=60.0)
+        self._panda = rospy.ServiceProxy(panda_service_name, PandaGrasp)
+        rospy.loginfo("BenchmarkGraspingManager: Connected with service {}".format(panda_service_name))
+
         # --- subscribers to camera topics --- #
         self._cam_info_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/camera_info', CameraInfo)
         self._rgb_sub = message_filters.Subscriber('/camera/color/image_raw', Image)
         self._depth_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/image_raw', Image)
         self._pc_sub = message_filters.Subscriber('/camera/depth/color/points', PointCloud2)
+        self._seg_sub = rospy.Subscriber('rgb/image_seg', Image, self.seg_img_callback, queue_size=10)
 
-        # synchronizer
+        # --- camera data synchronizer --- #
         self._tss = message_filters.ApproximateTimeSynchronizer([self._cam_info_sub, self._rgb_sub, self._depth_sub, self._pc_sub],
                                                                 queue_size=1, slop=0.5)
 
         self._tss.registerCallback(self._camera_data_callback)
 
+        # --- robot/camera transform listener --- #
         self._tfBuffer = tf2_ros.buffer.Buffer()
         listener = tf2_ros.transform_listener.TransformListener(self._tfBuffer)
-
-        self._seg_sub = rospy.Subscriber('rgb/image_seg', Image, self.seg_img_callback, queue_size=10)
-        self._cam_pose_sub = rospy.Subscriber('/camera/camera_pose', Transform, self.camera_pose_callback, queue_size=10)
 
         # --- camera messages --- #
         self._cam_info_msg = None
         self._rgb_msg = None
         self._depth_msg = None
         self._pc_msg = None
+        self._camera_pose = geometry_msgs.msg.Transform()
 
         self._seg_msg = NEW_MSG
-        self._cam_pose_msg = NEW_MSG
 
         self._new_camera_data = False
+
+        # --- listen to rigid EE_T_camera --- #
+        try:
+            hand_to_cam_pose_tf = self._tfBuffer.lookup_transform(self._pc_msg.header.frame_id, 'panda_hand', rospy.Time())
+            self._hand_to_cam_pose = hand_to_cam_pose_tf.transform
+
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            warnings.warn("tf listener could not get camera pose. Are you publishing camera poses on tf?")
+        
 
     # ---------------------- #
     # Grasp planning handler #
@@ -133,24 +148,12 @@ class BenchmarkGraspingManager(object):
             # define cloud
             planner_req.cloud = self._pc_msg
 
-            # define camera view point
-            try:
-                camera_pose_tf = self._tfBuffer.lookup_transform(self._pc_msg.header.frame_id, 'world', rospy.Time())
-                camera_pose = camera_pose_tf.transform
-
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                warnings.warn("tf listener could not get camera pose. Are you publishing camera poses on tf?")
-
-                camera_pose = geometry_msgs.msg.Transform()
-                camera_pose.rotation.w = 1.0
-
-
             camera_pose_msg = geometry_msgs.msg.Pose()
 
-            camera_pose_msg.position.x = camera_pose.translation.x
-            camera_pose_msg.position.y = camera_pose.translation.y
-            camera_pose_msg.position.z = camera_pose.translation.z
-            camera_pose_msg.orientation = camera_pose.rotation
+            camera_pose_msg.position.x = self._camera_pose.translation.x
+            camera_pose_msg.position.y = self._camera_pose.translation.y
+            camera_pose_msg.position.z = self._camera_pose.translation.z
+            camera_pose_msg.orientation = self._camera_pose.rotation
 
             planner_req.view_point = camera_pose_msg
 
@@ -158,8 +161,57 @@ class BenchmarkGraspingManager(object):
             print("... send request to server ...")
 
         try:
-
             reply = self._grasp_planner(planner_req)
+
+            print("Service {} reply is: \n{}" .format(self._grasp_planner.resolved_name, reply))
+
+        except rospy.ServiceException as e:
+            print("Service {} call failed: {}" .format(self._grasp_planner.resolved_name, e))
+
+            return Bool(False)
+
+        return self.execute_grasp(reply)
+
+    
+    def execute_grasp(self, grasp: BenchmarkGrasp, cam_pose: geometry_msgs.msg.Transform):
+        # Need to tranform the grasp pose from camera frame to world frame
+        # w_T_grasp = w_T_cam * cam_T_grasp
+
+        gp_quat = grasp.pose.pose.orientation
+        gp_pose = grasp.pose.pose.position
+        cam_T_grasp = np.eye(4)
+        cam_T_grasp[:3,:3] = quaternion_to_matrix([gp_quat.x, gp_quat.y, gp_quat.z, gp_quat.w])
+        cam_T_grasp[:3,3] = np.array([gp_pose.x, gp_pose.y, gp_pose.z])
+
+        cam_quat = cam_pose.rotation
+        cam_pose = cam_pose.translation
+        w_T_cam = np.eye(4)
+        w_T_cam[:3,:3] = quaternion_to_matrix([cam_quat.x, cam_quat.y, cam_quat.z, cam_quat.w])
+        w_T_cam[:3,3] = np.array([cam_pose.x, cam_pose.y, cam_pose.z])
+
+        w_T_grasp = np.matmul(w_T_cam, cam_T_grasp)
+
+        # Create the ROS pose message to send to robot
+        grasp_pose_msg = geometry_msgs.msg.PoseStamped()
+
+        grasp_pose_msg.header.frame_id = 'world'
+
+        grasp_pose_msg.pose.position.x = w_T_grasp[0,3]
+        grasp_pose_msg.pose.position.y = w_T_grasp[1,3]
+        grasp_pose_msg.pose.position.z = w_T_grasp[2,3]
+
+        q = matrix_to_quaternion(w_T_grasp[:3,:3])
+        grasp_pose_msg.pose.orientation.x = q[0]
+        grasp_pose_msg.pose.orientation.y = q[1]
+        grasp_pose_msg.pose.orientation.z = q[2]
+        grasp_pose_msg.pose.orientation.w = q[3]
+
+        panda_req = PandaGraspRequest()
+        panda_req.grasp = grasp_pose_msg
+        panda_req.width = grasp.width
+
+        try:
+            reply = self._panda(panda_req)      
 
             print("Service {} reply is: \n{}" .format(self._grasp_planner.resolved_name, reply))
 
@@ -168,13 +220,13 @@ class BenchmarkGraspingManager(object):
         except rospy.ServiceException as e:
             print("Service {} call failed: {}" .format(self._grasp_planner.resolved_name, e))
 
-            return Bool(False)
+            return Bool(False)          
 
+    
     # ------------------- #
     # Camera data handler #
     # ------------------- #
     def _camera_data_callback(self, cam_info, rgb, depth, pc):
-
         # rospy.loginfo("New data from camera!")
         self._cam_info_msg = cam_info
         self._rgb_msg = rgb
@@ -183,13 +235,16 @@ class BenchmarkGraspingManager(object):
 
         self._new_camera_data = True
 
+        # define camera view point
+        try:
+            camera_pose_tf = self._tfBuffer.lookup_transform(self._pc_msg.header.frame_id, 'world', rospy.Time())
+            self._camera_pose = camera_pose_tf.transform
 
-    def camera_pose_callback(self, data):
-        if self._verbose:
-            print("Got camera pose...")
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            warnings.warn("tf listener could not get camera pose. Are you publishing camera poses on tf?")
 
-        self._cam_pose_msg['data'] = data
-        self._cam_pose_msg['new_data'] = True
+            self._camera_pose = geometry_msgs.msg.Transform()
+            self._camera_pose.rotation.w = 1.0
 
     def seg_img_callback(self, data):
         if self._verbose:
@@ -197,6 +252,7 @@ class BenchmarkGraspingManager(object):
 
         self._seg_msg['data'] = data
         self._seg_msg['new_data'] = True
+
 
 
 
@@ -208,9 +264,10 @@ if __name__ == "__main__":
     grasp_planner_service_name = rospy.get_param("~grasp_planner_service_name")
     grasp_planner_service = rospy.get_param("~grasp_planner_service")
     new_grasp_service_name = rospy.get_param("~user_cmd_service_name")
+    panda_service_name = rospy.get_param("~panda_service_name")
 
     # Instantiate benchmark client class
-    bench_manager = BenchmarkGraspingManager(grasp_planner_service_name, grasp_planner_service, new_grasp_service_name, verbose=True)
+    bench_manager = BenchmarkGraspingManager(grasp_planner_service_name, grasp_planner_service, new_grasp_service_name, panda_service_name, verbose=True)
 
     # Spin forever.
     rospy.spin()

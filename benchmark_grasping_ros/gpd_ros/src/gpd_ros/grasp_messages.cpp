@@ -30,19 +30,6 @@ gpd_ros::GraspConfig GraspMessages::convertToGraspMsg(const gpd::candidate::Hand
 benchmark_grasping_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg(const gpd::candidate::Hand& hand, const std_msgs::Header& header)
 {
   //first transform grasp orientation wrt camera
-  /*
-  grasp_pos = parsed_data['position']
-  rot_x = parsed_data['axis']
-  rot_z = parsed_data['approach']
-  rot_y = np.cross(rot_z, rot_x)
-  # create T matrix
-  cam_T_grasp = np.array([rot_x, rot_y, rot_z, grasp_pos]).transpose()
-  cam_T_grasp = np.append(cam_T_grasp, [[0, 0, 0, 1]], axis=0)
-
-  grasp_target_T_panda_ef = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, -0.06], [0, 0, 0, 1]])
-
-  self._cam_T_grasp = np.matmul(cam_T_grasp, grasp_target_T_panda_ef)
-  */
 
   Eigen::Vector3d pos = hand.getPosition();
   Eigen::Vector3d rot_x = hand.getAxis();
@@ -53,9 +40,6 @@ benchmark_grasping_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg
 
   Eigen::Matrix4d rotation;
   rotation.setIdentity();
-
-  std::cout << "convertToBenchmarkGraspMsg: \nbinormal " << binormal << std::endl;
-  std::cout << "rot_y " << rot_y << std::endl;
 
   rotation.col(0).segment(0,3) = rot_x;
   rotation.col(1).segment(0,3) = rot_y;

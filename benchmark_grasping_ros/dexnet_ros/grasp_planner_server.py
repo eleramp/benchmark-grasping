@@ -171,6 +171,7 @@ class DexnetGraspPlannerService(DexnetGraspPlanner):
             return self._create_grasp_planner_srv_msg()
         else:
             return None
+            
     def plan_grasp_bb_handler(self, req):
         """Grasp planner request handler.
 

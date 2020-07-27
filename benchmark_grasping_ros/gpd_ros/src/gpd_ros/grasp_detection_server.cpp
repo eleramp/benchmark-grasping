@@ -94,7 +94,7 @@ bool GraspDetectionServer::detectBenchGrasps(benchmark_grasping_ros::GraspPlanne
       rviz_plotter_->drawGrasps(grasps, frame_);
     }
 
-
+    cloud_camera_header_.frame_id = cloud_ros.header.frame_id;
 
     // Create benchmark grasp reply.
     benchmark_grasping_ros::BenchmarkGrasp bench_grasp = GraspMessages::convertToBenchmarkGraspMsg(*grasps[0], cloud_camera_header_);
