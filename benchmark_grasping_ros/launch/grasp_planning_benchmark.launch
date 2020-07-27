@@ -1,0 +1,79 @@
+<launch>
+
+  <!-- Launch realsense camera -->
+  <!-- <include file="$(find realsense2_camera)/launch/rs_rgbd.launch">
+    <arg name="align_depth"         value="true"/>
+    <arg name="enable_pointcloud"   value="true"/>
+  </include> -->
+
+
+  <arg name="gpd"           value="false" />
+  <arg name="superquadrics" value="false" />
+  <arg name="graspnet"      value="false" />
+  <arg name="dexnet"        value="true"  />
+
+
+  <!-- Run Dexnet Grasp Planner -->
+  <group if="$(arg dexnet)">
+
+    <arg name="ns"  default="dexnet_bench" />
+
+    <arg name="model_name"                        default="GQCNN-4.0-PJ" />
+    <arg name="model_dir"                         default="/home/icub/workspace/gqcnn/models" />
+    <arg name="fully_conv"                        default="False" />
+
+    <arg name="grasp_planner_service_name"        default="dexnet_grasp_planner_service" />
+    <arg name="grasp_planner_service"             default="GraspPlanner" />
+
+    <arg name="grasp_publisher_name"              default="candidate_grasp" />
+
+    <node name="dexnet_grasp_planner"  pkg="benchmark_grasping_ros" type="grasp_planner_server.py" ns="$(arg ns)" output="screen" >
+    	<param name="model_name"                          value="$(arg model_name)" />
+    	<param name="model_dir"                           value="$(arg model_dir)" />
+    	<param name="fully_conv"                          value="$(arg fully_conv)" />
+      <param name="grasp_planner_service_name"          value="$(arg grasp_planner_service_name)" />
+      <param name="grasp_publisher_name"                value="$(arg grasp_publisher_name)" />
+    </node>
+
+    <!-- Launch Manager -->
+    <arg name="user_cmd_service_name"              default="new_grasp" />
+
+    <node name="grasp_benchmark_manager" pkg="benchmark_grasping_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
+        <param name="user_cmd_service_name"        value="$(arg user_cmd_service_name)" />
+        <param name="grasp_planner_service_name"    value="$(arg grasp_planner_service_name)" />
+        <param name="grasp_planner_service"         value="$(arg grasp_planner_service)" />
+    </node>
+
+  </group>
+
+  <group if="$(arg gpd)">
+
+    <arg name="ns"  default="gpd_bench" />
+    <arg name="grasp_planner_node_name" default="gpd_grasp_planner" />
+
+    <arg name="grasp_planner_service_name"        default="gpd_grasp_planner_service" />
+    <arg name="grasp_planner_service"             default="GraspPlannerCloud" />
+    <arg name="grasp_publisher_name"              default="candidate_grasp" />
+    <arg name="config_file"                       default="/home/icub/workspace/gpd/cfg/ros_caffe_params.cfg" />
+    <arg name="rviz"                              default="true" />
+
+    <node name="$(arg grasp_planner_node_name)"  pkg="gpd_ros"  type="detect_grasps_server" ns="$(arg ns)" output="screen" >
+      <param name="grasp_planner_service_name"          value="$(arg grasp_planner_service_name)" />
+      <param name="grasp_publisher_name"                value="$(arg grasp_publisher_name)" />
+      <param name="config_file"                         value="$(arg config_file)" />
+      <param name="rviz"                                value="$(arg rviz)" />
+    </node>
+
+    <!-- Launch Manager -->
+    <arg name="user_cmd_service_name"              default="new_grasp" />
+
+    <node name="grasp_benchmark_manager" pkg="benchmark_grasping_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
+        <param name="user_cmd_service_name"         value="$(arg user_cmd_service_name)" />
+        <param name="grasp_planner_service_name"    value="$(arg grasp_planner_node_name)/$(arg grasp_planner_service_name)" />
+        <param name="grasp_planner_service"         value="$(arg grasp_planner_service)" />
+    </node>
+
+  </group>
+
+
+</launch>
