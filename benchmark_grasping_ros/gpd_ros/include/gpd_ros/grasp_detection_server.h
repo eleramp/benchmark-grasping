@@ -72,8 +72,8 @@ public:
    * \brief Constructor.
    * \param node the ROS node
   */
-  GraspDetectionServer(ros::NodeHandle& node, std::string config_file,
-                                           bool publish_rviz=false, std::string grasp_publisher_name="");
+  GraspDetectionServer(ros::NodeHandle& node, std::string config_file, , std::string grasp_service_name="", 
+                      bool publish_rviz=false, std::string grasp_publisher_name="");
 
   /**
    * \brief Destructor.
@@ -90,14 +90,13 @@ public:
    * \param req the service request
    * \param res the service response
    */
-  bool detectGrasps(gpd_ros::detect_grasps::Request& req, gpd_ros::detect_grasps::Response& res);
-
   bool detectBenchGrasps(benchmark_grasping_ros::GraspPlannerCloud::Request& req,
                     benchmark_grasping_ros::GraspPlannerCloud::Response& res);
 
 
 private:
 
+  ros::ServiceServer _service; 
   ros::Publisher grasps_pub_; ///< ROS publisher for grasp list messages
 
   std_msgs::Header cloud_camera_header_; ///< stores header of the point cloud
