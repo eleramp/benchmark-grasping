@@ -17,7 +17,7 @@ class CameraData:
     seg_img = None
     bounding_box = None
     intrinsic_params = None
-    extrinsic_params = {'position': (0.0)*3, 'rotation': (0.0)*9}
+    extrinsic_params = {'position': np.ndarray((3, 1), float), 'rotation': np.eye(3)}
 
 
 class BaseGraspPlanner(object):
@@ -34,9 +34,12 @@ class BaseGraspPlanner(object):
         self.cfg = cfg
         self._grasp_poses = []
         self._best_grasp = None
+        self._camera_data = CameraData()
 
     def reset(self):
         self.grasp_poses = []
+        self._best_grasp = None
+        self._camera_data = CameraData()
 
     def plan_grasp(self, camera_data, n_candidates=1):
         """Grasp Planner
