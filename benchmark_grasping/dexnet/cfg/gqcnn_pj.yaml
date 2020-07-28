@@ -31,7 +31,7 @@ policy:
 
   # general params
   deterministic: 1
-  gripper_width: 0.09
+  gripper_width: 0.07
 
   # sampling params
   sampling:
@@ -63,7 +63,7 @@ policy:
   metric:
     type: gqcnn
     gqcnn_model: models/GQCNN-4.0-PJ
-    
+
     crop_height: 96
     crop_width: 96
 
@@ -79,6 +79,14 @@ policy:
 
     vmin: 0.5
     vmax: 0.8
+
+vis:
+  rgbd_state: 0
+  cropped_rgbd_image: 0
+  color_image: 0
+  depth_image: 1
+  segmask: 0
+  best_grasp: 1
 
 # image proc params
 inpaint_rescale_factor: 0.5

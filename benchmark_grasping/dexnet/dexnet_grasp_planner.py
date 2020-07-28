@@ -245,7 +245,7 @@ class DexnetGraspPlanner(BaseGraspPlanner):
         Y = (grasp_pose.depth * v) / camera_intrinsics.fy
 
         grasp_pos = [X, Y, grasp_pose.depth]
-        euler = [0, 0, 1.57 + grasp_pose.angle]
+        euler = [0, 0, -1.57 + grasp_pose.angle]
 
         rot = R.from_euler('xyz', euler)
         cam_R_grasp = rot.as_dcm()
@@ -254,7 +254,7 @@ class DexnetGraspPlanner(BaseGraspPlanner):
         cam_T_grasp = np.append(cam_T_grasp, np.array([[0, 0, 0, 1]]), axis=0)
 
         grasp_target_T_panda_ef = np.eye(4)
-        grasp_target_T_panda_ef[2, 3] = -0.12
+        grasp_target_T_panda_ef[2, 3] = -0.15
 
         cam_T_grasp = np.matmul(cam_T_grasp, grasp_target_T_panda_ef)
 

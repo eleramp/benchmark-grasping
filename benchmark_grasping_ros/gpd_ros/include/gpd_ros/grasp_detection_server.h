@@ -72,7 +72,7 @@ public:
    * \brief Constructor.
    * \param node the ROS node
   */
-  GraspDetectionServer(ros::NodeHandle& node, std::string config_file, , std::string grasp_service_name="", 
+  GraspDetectionServer(ros::NodeHandle& node, std::string config_file, std::string grasp_service_name="",
                       bool publish_rviz=false, std::string grasp_publisher_name="");
 
   /**
@@ -96,7 +96,6 @@ public:
 
 private:
 
-  ros::ServiceServer _service; 
   ros::Publisher grasps_pub_; ///< ROS publisher for grasp list messages
 
   std_msgs::Header cloud_camera_header_; ///< stores header of the point cloud

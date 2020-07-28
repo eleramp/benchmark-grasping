@@ -22,7 +22,7 @@ benchmark_grasping_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg
 
   Eigen::Matrix4d offset;
   offset.setIdentity();
-  offset(3,2) = -0.06;
+  offset(3,2) = -0.03;
 
   Eigen::Matrix4d cam_T_grasp = rotation * offset;
 

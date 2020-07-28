@@ -1,7 +1,7 @@
 #include <gpd_ros/grasp_detection_server.h>
 
 
-GraspDetectionServer::GraspDetectionServer(ros::NodeHandle& node, std::string config_file, std::string grasp_service_name, 
+GraspDetectionServer::GraspDetectionServer(ros::NodeHandle& node, std::string config_file, std::string grasp_service_name,
                                     bool publish_rviz, std::string grasp_publisher_name)
 {
   cloud_camera_ = NULL;
@@ -10,9 +10,6 @@ GraspDetectionServer::GraspDetectionServer(ros::NodeHandle& node, std::string co
   view_point_ << 0.0, 0.0, 0.0;
 
   grasp_detector_ = new gpd::GraspDetector(config_file);
-
-  // Setup grasp service
-  _service = node.advertiseService(grasp_service_name, &GraspDetectionServer::detectBenchGrasps);
 
   // Visualize planned grasps in Rviz
   if (publish_rviz == true)
@@ -123,6 +120,10 @@ int main(int argc, char** argv)
   node.param<bool>("publish_rviz", publish_rviz, false);
 
   GraspDetectionServer grasp_detection_server(node, config_file, grasp_service_name);
+
+   // Setup grasp service
+  ros::ServiceServer service = node.advertiseService(grasp_service_name, &GraspDetectionServer::detectBenchGrasps,
+                          &grasp_detection_server);
 
   ROS_INFO("GPD Grasp detection service is waiting for a point cloud ...");
 

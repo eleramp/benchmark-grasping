@@ -24,6 +24,8 @@ from benchmark_grasping.base.transformations import quaternion_to_matrix, matrix
 from benchmark_grasping_ros.srv import *
 from benchmark_grasping_ros.msg import BenchmarkGrasp
 
+from panda_grasp_srv.srv import PandaGrasp, PandaGraspRequest, PandaGraspResponse
+
 import numpy as np
 
 
@@ -50,11 +52,12 @@ class BenchmarkGraspingManager(object):
         # --- grasp planner service --- #
         self._grasp_planner_srv = GRASP_PLANNER_SRV[grasp_planner_service]
 
-        rospy.wait_for_service(grasp_planner_service_name, timeout=60.0)
+        rospy.wait_for_service(grasp_planner_service_name, timeout=10.0)
         self._grasp_planner = rospy.ServiceProxy(grasp_planner_service_name, self._grasp_planner_srv)
         rospy.loginfo("BenchmarkGraspingManager: Connected with service {}".format(grasp_planner_service_name))
 
         # --- panda service --- #
+        panda_service_name =  "/panda_grasp"
         rospy.wait_for_service(panda_service_name, timeout=60.0)
         self._panda = rospy.ServiceProxy(panda_service_name, PandaGrasp)
         rospy.loginfo("BenchmarkGraspingManager: Connected with service {}".format(panda_service_name))
@@ -160,7 +163,7 @@ class BenchmarkGraspingManager(object):
 
             return Bool(False)
 
-        return self.execute_grasp(reply, self._camera_pose)
+        return self.execute_grasp(reply.grasp, self._camera_pose)
 
     def execute_grasp(self, grasp, cam_pose):
         """
@@ -170,7 +173,6 @@ class BenchmarkGraspingManager(object):
         """
         # Need to tranform the grasp pose from camera frame to world frame
         # w_T_grasp = w_T_cam * cam_T_grasp
-
         gp_quat = grasp.pose.pose.orientation
         gp_pose = grasp.pose.pose.position
         cam_T_grasp = np.eye(4)
@@ -184,11 +186,14 @@ class BenchmarkGraspingManager(object):
         w_T_cam[:3,3] = np.array([cam_pose.x, cam_pose.y, cam_pose.z])
 
         w_T_grasp = np.matmul(w_T_cam, cam_T_grasp)
+        print("w_T_cam\n ", w_T_cam)
+        print("cam_T_grasp\n ", cam_T_grasp)
+        print("w_T_grasp\n ", w_T_grasp)
 
         # Create the ROS pose message to send to robot
         grasp_pose_msg = geometry_msgs.msg.PoseStamped()
 
-        grasp_pose_msg.header.frame_id = 'world'
+        grasp_pose_msg.header.frame_id = 'panda_link0'
 
         grasp_pose_msg.pose.position.x = w_T_grasp[0,3]
         grasp_pose_msg.pose.position.y = w_T_grasp[1,3]
@@ -204,15 +209,17 @@ class BenchmarkGraspingManager(object):
         panda_req.grasp = grasp_pose_msg
         panda_req.width = grasp.width
 
+        print("request to panda is: \n{}" .format(panda_req))
+
         try:
             reply = self._panda(panda_req)
 
-            print("Service {} reply is: \n{}" .format(self._grasp_planner.resolved_name, reply))
+            print("Service {} reply is: \n{}" .format(self._panda.resolved_name, reply))
 
             return Bool(True)
 
         except rospy.ServiceException as e:
-            print("Service {} call failed: {}" .format(self._grasp_planner.resolved_name, e))
+            print("Service {} call failed: {}" .format(self._panda.resolved_name, e))
 
             return Bool(False)
 
@@ -230,7 +237,7 @@ class BenchmarkGraspingManager(object):
 
         # define camera view point
         try:
-            camera_pose_tf = self._tfBuffer.lookup_transform(self._pc_msg.header.frame_id, 'world', rospy.Time())
+            camera_pose_tf = self._tfBuffer.lookup_transform( 'panda_link0', self._pc_msg.header.frame_id, rospy.Time())
             self._camera_pose = camera_pose_tf.transform
 
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
@@ -255,7 +262,7 @@ if __name__ == "__main__":
     grasp_planner_service_name = rospy.get_param("~grasp_planner_service_name")
     grasp_planner_service = rospy.get_param("~grasp_planner_service")
     new_grasp_service_name = rospy.get_param("~user_cmd_service_name")
-    panda_service_name = rospy.get_param("~panda_service_name")
+    panda_service_name = "panda_grasp" # rospy.get_param("/panda_service_name")
 
     # Instantiate benchmark client class
     bench_manager = BenchmarkGraspingManager(grasp_planner_service_name, grasp_planner_service, new_grasp_service_name, panda_service_name, verbose=True)
