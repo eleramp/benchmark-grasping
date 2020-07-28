@@ -13,11 +13,11 @@ services:
   deps:
     depends_on:
       - superquadric_based
-    # build:
-    # args:
-    #     from: eleramp/superquadric_grasp_planner:latest
-    #   context: ./tools/
-    #  dockerfile: Dockerfile
+    build:
+      args:
+        from: eleramp/superquadric_grasp_planner:latest
+      context: ./tools/
+      dockerfile: Dockerfile
     image: eleramp/superquadric_based_full:latest
 
   panda:

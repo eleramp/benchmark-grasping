@@ -24,8 +24,6 @@ from benchmark_grasping.base.transformations import quaternion_to_matrix, matrix
 from benchmark_grasping_ros.srv import *
 from benchmark_grasping_ros.msg import BenchmarkGrasp
 
-from panda_simple_grasp_service.srv import PandaGrasp
-
 import numpy as np
 
 
@@ -207,7 +205,7 @@ class BenchmarkGraspingManager(object):
         panda_req.width = grasp.width
 
         try:
-            reply = self._panda(panda_req)      
+            reply = self._panda(panda_req)
 
             print("Service {} reply is: \n{}" .format(self._grasp_planner.resolved_name, reply))
 
@@ -216,7 +214,7 @@ class BenchmarkGraspingManager(object):
         except rospy.ServiceException as e:
             print("Service {} call failed: {}" .format(self._grasp_planner.resolved_name, e))
 
-            return Bool(False)          
+            return Bool(False)
 
     # ------------------- #
     # Camera data handler #

@@ -94,6 +94,7 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
         python-rosinstall-generator \
         python-vcstools \
         python-wstool \
+        python-catkin-tools \
         python3-catkin-pkg-modules \
         python3-rospkg-modules \
         python3-empy \
@@ -127,7 +128,7 @@ RUN mkdir -p ${WS_SOURCES} && cd ${WS_SOURCES} &&\
       -DVTK_PYTHON_VERSION=${PYTHON_VERSION} \
       -DVTK_WRAP_PYTHON=ON \
       .. &&\
-    cmake --build . --target install &&\
+    make -j8 && make install &&\
     rm -rf ${WS_SOURCES}/vtk
 
 # SWIG
@@ -166,6 +167,9 @@ RUN apt-get update &&\
 
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WS_INSTALL}/lib
 ENV IPOPT_DIR=${WS_INSTALL}
+
+# Create a new runtimeusers group
+RUN groupadd -K GID_MIN=1000 -K GID_MAX=1000 runtimeusers
 
 # Install superquadric-lib
 RUN mkdir ${WS_INSTALL}/include/coin/ &&\
@@ -209,8 +213,6 @@ RUN mkdir -p ${CATKIN_WS_DIR}/src && \
 # =============
 # FIX OWNERSHIP
 # =============
-# Create a new runtimeusers group
-RUN groupadd -K GID_MIN=1000 -K GID_MAX=1000 runtimeusers
 
 RUN find ${WS_DIR} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ &&\
     find ${WS_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
