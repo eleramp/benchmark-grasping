@@ -108,7 +108,7 @@ int main(int argc, char** argv)
   std::srand(std::time(0));
 
   // initialize ROS
-  ros::init(argc, argv, "detect_grasps_server");
+  ros::init(argc, argv, "Gpd_Grasp_Planner");
   ros::NodeHandle node("~");
 
   std::string grasp_service_name;

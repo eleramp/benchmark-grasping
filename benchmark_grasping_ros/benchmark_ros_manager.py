@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 This file contains the code of the benchmark service client.
@@ -18,6 +18,7 @@ from sensor_msgs.msg import Image, PointCloud2, CameraInfo
 from geometry_msgs.msg import Transform
 from std_msgs.msg import Bool
 import tf2_ros
+
 from benchmark_grasping.base.transformations import quaternion_to_matrix, matrix_to_quaternion
 
 from benchmark_grasping_ros.srv import *
@@ -87,15 +88,6 @@ class BenchmarkGraspingManager(object):
         self._seg_msg = NEW_MSG
 
         self._new_camera_data = False
-
-        # --- listen to rigid EE_T_camera --- #
-        try:
-            hand_to_cam_pose_tf = self._tfBuffer.lookup_transform(self._pc_msg.header.frame_id, 'panda_hand', rospy.Time())
-            self._hand_to_cam_pose = hand_to_cam_pose_tf.transform
-
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            warnings.warn("tf listener could not get camera pose. Are you publishing camera poses on tf?")
-        
 
     # ---------------------- #
     # Grasp planning handler #
@@ -170,10 +162,14 @@ class BenchmarkGraspingManager(object):
 
             return Bool(False)
 
-        return self.execute_grasp(reply)
+        return self.execute_grasp(reply, self._camera_pose)
 
-    
-    def execute_grasp(self, grasp: BenchmarkGrasp, cam_pose: geometry_msgs.msg.Transform):
+    def execute_grasp(self, grasp, cam_pose):
+        """
+        Parameters:
+            - grasp (obj: BenchmarkGrasp msg)
+            - cam_pose (obj: geometry_msgs.msg.Transform)
+        """
         # Need to tranform the grasp pose from camera frame to world frame
         # w_T_grasp = w_T_cam * cam_T_grasp
 
@@ -222,7 +218,6 @@ class BenchmarkGraspingManager(object):
 
             return Bool(False)          
 
-    
     # ------------------- #
     # Camera data handler #
     # ------------------- #
@@ -252,8 +247,6 @@ class BenchmarkGraspingManager(object):
 
         self._seg_msg['data'] = data
         self._seg_msg['new_data'] = True
-
-
 
 
 if __name__ == "__main__":

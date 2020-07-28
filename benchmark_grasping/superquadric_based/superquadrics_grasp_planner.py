@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import math
@@ -32,7 +32,7 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
     
             self.cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-        super(SuperquadricsGraspPlanner).__init__(self.cfg)
+        super(SuperquadricsGraspPlanner, self).__init__(self.cfg)
 
         self._robot = self.cfg['robot']['name']
         if self._robot[-3:] == 'Sim' or self._robot[-3:] == 'sim':
