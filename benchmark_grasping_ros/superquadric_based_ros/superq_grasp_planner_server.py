@@ -45,6 +45,8 @@ from std_msgs.msg import Header
 from benchmark_grasping_ros.srv import GraspPlannerCloud
 from benchmark_grasping_ros.msg import BenchmarkGrasp
 
+import superquadric_bindings  as sb
+
 from benchmark_grasping.base.base_grasp_planner import CameraData
 
 from benchmark_grasping.superquadric_based.superquadrics_grasp_planner import SuperquadricsGraspPlanner
@@ -73,6 +75,8 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         self._grasp_planning_service = rospy.Service(grasp_service_name, GraspPlannerCloud,
                                             self.plan_grasp_handler)
 
+        self._visualizer = sb.Visualizer()
+
 
     def read_images(self, req):
         """Reads images from a ROS service request.
@@ -86,14 +90,16 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         ros_cloud = req.cloud
         cam_position = np.array([req.view_point.position.x, req.view_point.position.y, req.view_point.position.z])
         cam_quat = np.array([req.view_point.orientation.x, req.view_point.orientation.y, 
-                             req.view_point.orientation.z, req.view_point.orientation.w])
+                             req.view_point.orientation.z, req.view_point.orientation.w])        
 
         # pointcloud2 to numpy array
-        pc_data = ros_numpy.numpify(ros_cloud)
-        points = np.c_[pc_data['x'], pc_data['y'], pc_data['z']]
-        colors = pc_data['rgb']
+        pc_data = ros_numpy.numpify(ros_cloud) # TODO: this method does not encode color, which results in NaN
 
-        return self.create_camera_data(points, colors, cam_position, cam_quat)
+        points = np.array([pc_data['x'], pc_data['y'], pc_data['z']])
+        camera_data = self.create_camera_data(points, cam_position, cam_quat)
+        print("ciao")
+
+        return camera_data
 
     def plan_grasp_handler(self, req):
         """Grasp planner request handler.
@@ -108,7 +114,7 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         self.grasp_poses = []
         ok = self.plan_grasp(camera_data, n_candidates=1)
 
-        self.visualize()
+        #self.visualize()
 
         if ok:
             return self._create_grasp_planner_srv_msg()
@@ -148,7 +154,6 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         if self.grasp_pose_publisher is not None:
             # Publish the pose alone for easy visualization of grasp
             # pose in Rviz.
-            print("publish grasp!! .")
             self.grasp_pose_publisher.publish(p)
 
         return grasp_msg

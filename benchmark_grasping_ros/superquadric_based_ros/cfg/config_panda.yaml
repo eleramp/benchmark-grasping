@@ -1,7 +1,7 @@
 robot: 
     name: panda
-    icub_base_T_robot_base: [[-1., 0., 0., 0.], [0., -1, 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]]
-    icub_hand_T_robot_hand: [[0., 1., 0., 0.], [-1., 0., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]]
+    icub_base_T_robot_base: [[-1., 0., 0., 0.], [0., -1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]]
+    icub_hand_T_robot_hand: [[0., 1., 0., 0.], [-1., 0., 0., 0.], [0., 0., 1., 0.0], [0., 0., 0., 1.]]
 
 sq_model:
     object_class: default  # cylinder, box, sphere, default

@@ -41,24 +41,16 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         self._icub_base_T_robot_base = np.array(self.cfg['robot']['icub_base_T_robot_base'])
         self._icub_hand_T_robot_hand = np.array(self.cfg['robot']['icub_hand_T_robot_hand'])
 
+        self._pointcloud = sb.PointCloud()
         self._superqs = sb.vector_superquadric()
         self._grasp_res = sb.GraspResults()
         self._sq_estimator = sb.SuperqEstimatorApp()
         self._grasp_estimator = sb.GraspEstimatorApp()
-        self._visualizer = sb.Visualizer()
 
         self.configure(self.cfg)
 
     def configure(self, cfg):
         
-        # ------ Set Visualizer parameters ------ #
-        self._visualizer.setPosition(cfg['visualizer']['x'], cfg['visualizer']['y'])
-        self._visualizer.setSize(cfg['visualizer']['width'], cfg['visualizer']['height'])
-
-        self._visualizer.resetPoints()
-        self._visualizer.resetSuperq()
-        self._visualizer.resetPoses()
-
         # ------ Set Superquadric Model parameters ------ #
         self._sq_estimator.SetNumericValue("tol", cfg['sq_model']['tol'])
         self._sq_estimator.SetIntegerValue("print_level", 0)
@@ -84,12 +76,9 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
 
         self._superqs = sb.vector_superquadric()
         self._grasp_res = sb.GraspResults()
+        
 
-        self._visualizer.resetPoints()
-        self._visualizer.resetSuperq()
-        self._visualizer.resetPoses()
-
-    def create_camera_data(self, pointcloud: np.ndarray, colors: np.ndarray, cam_pos: np.ndarray, cam_quat: np.ndarray):
+    def create_camera_data(self, pointcloud: np.ndarray, cam_pos: np.ndarray, cam_quat: np.ndarray, colors= np.ndarray(shape=(0,))):
         """ Create the CameraData object in the right format expected by the superquadric-based grasp planner
 
         Parameters
@@ -105,11 +94,11 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         """
 
         self._camera_data = CameraData()
+        self._pointcloud.deletePoints()
 
         # ----------------------------- #
         # --- Create the pointcloud --- #
         # ----------------------------- #
-        self._camera_data.pc_img = sb.PointCloud()
 
         # We need to express the pointcloud wrt the icub base frame:
         #     icub_base_T_cloud = icub_base_T_robot_base * robot_base_T_cam * cam_points
@@ -126,22 +115,34 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         sb_points = sb.deque_Vector3d()
         sb_colors = sb.vector_vector_uchar()
 
-        for i, pt in enumerate(pointcloud):
-            icub_pt = icub_T_cam.dot(np.append(pt, 1))
+        for i in range(0, pointcloud.shape[1]):
+            for j in range(0, pointcloud.shape[2]):
+                pt = np.array([pointcloud[0][i][j], pointcloud[1][i][j], pointcloud[2][i][j]])
+                
+                icub_pt = icub_T_cam.dot(np.append(pt, 1))
+                if np.isnan(icub_pt[0]):
+                    continue
 
-            col = colors[i][:3]
-            if type(col) is np.ndarray:
-                col = col.astype(int)
-                col = col.tolist()
-            else:
-                col = [int(c) for c in col]
+                if colors.size != 0:
+                    col = colors[i][:3]
+                    if type(col) is np.ndarray:
+                        col = col.astype(int)
+                        col = col.tolist()
+                    else:
+                        col = [int(c) for c in col]
+                else:
+                    col = [255,255,0]
 
-            sb_points.push_back(icub_pt[:3])
-            sb_colors.push_back(col)
+                sb_points.push_back(icub_pt[:3])
+                sb_colors.push_back(col)
 
         if sb_points.size() >= self.cfg['sq_model']['minimum_points']:
-            self._camera_data.pc_img.setPoints(sb_points)
-            self._camera_data.pc_img.setColors(sb_colors)
+            self._pointcloud.setPoints(sb_points)
+            self._pointcloud.setColors(sb_colors)
+        else:
+            print("not enough points in the pointcloud")
+
+        self._camera_data.pc_img = self._pointcloud
 
         self._camera_data.extrinsic_params['position'] = cam_pos
         self._camera_data.extrinsic_params['rotation'] = robot_R_cam
@@ -168,25 +169,33 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         # -------------------------- #
         # --- Compute grasp pose --- #
         # -------------------------- #
+
         ok = self._compute_grasp_poses(self._superqs)
         if not ok:
             warnings.warn("Cannot compute a valid grasp pose from the given data")
             return False
+       
+
+        self.visualize()
 
         return True
 
     def visualize(self):
         """Plot the pointcloud, superquadric and grasp poses
         """
+
+        del  self._visualizer
+        self._visualizer = sb.Visualizer()
+
         self._visualizer.resetPoints()
         self._visualizer.resetSuperq()
         self._visualizer.resetPoses()
 
-        self._visualizer.addPoints(self._camera_data.pc_img, False)
+        self._visualizer.addPoints(self._pointcloud, False)
         self._visualizer.addSuperq(self._superqs)
         self._visualizer.addPoses(self._grasp_res.grasp_poses)
 
-        self._visualizer.render()
+        self._visualizer.visualize()
 
     @property
     def superqs(self):
@@ -196,8 +205,8 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
 
             # Express the sq pose wrt the robot base, instead of the icub base
             quat_sq = tr.axis_angle_to_quaternion(
-                (sq.axisangle[0][0], sq.axisangle[0][1], sq.axisangle[0][2], sq.axisangle[0][3]))
-            pos_sq = [sq.center[0][0], sq.center[0][1], sq.center[0][2]]
+                (sq.axisangle[0][0], sq.axisangle[1][0], sq.axisangle[2][0], sq.axisangle[3][0]))
+            pos_sq = [sq.center[0][0], sq.center[1][0], sq.center[2][0]]
 
             robot_base_T_icub_base = np.linalg.inv(self._icub_base_T_robot_base)
 
@@ -266,7 +275,7 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
             return False
 
         gp = self._grasp_res.grasp_poses[0]
-        if np.linalg.norm((gp.position[0][0], gp.position[0][1], gp.position[0][2])) == 0.:
+        if np.linalg.norm((gp.position[0][0], gp.position[1][0], gp.position[2][0])) == 0.:
             return False
 
         # --- Estimate pose cost --- #
@@ -290,9 +299,9 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
             grasp_6d = Grasp6D()
 
             grasp_6d.position = robot_base_T_robot_gp[:3, 3]
-            grasp_6d.orientation = robot_base_T_robot_gp[:3, :3]
+            grasp_6d.rotation = robot_base_T_robot_gp[:3, :3]
             grasp_6d.width = 0.0
-            grasp_6d.ref_frame = 'base_link'
+            grasp_6d.ref_frame = 'panda_link0'
             grasp_6d.score = gp.cost
 
             self._grasp_poses.append(grasp_6d)
@@ -307,20 +316,23 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
 
         robot_base_T_icub_base = np.linalg.inv(self._icub_base_T_robot_base)
 
-        icub_gp_ax = [gp.axisangle[0][0], gp.axisangle[0][1], gp.axisangle[0][2],
-                      gp.axisangle[0][3]]
-        icub_gp_pos = [gp.position[0][0], gp.position[0][1], gp.position[0][2]]
+        icub_gp_ax = [gp.axisangle[0][0], gp.axisangle[1][0], gp.axisangle[2][0],
+                      gp.axisangle[3][0]]
+        icub_gp_pos = [gp.position[0][0], gp.position[1][0], gp.position[2][0]]
 
         icub_base_T_icub_gp = np.eye(4)
         icub_base_R_icub_gp = tr.quaternion_to_matrix(tr.axis_angle_to_quaternion(icub_gp_ax))
         icub_base_T_icub_gp[:3] = np.append(icub_base_R_icub_gp, np.array([icub_gp_pos]).T, axis=1)
 
         robot_base_T_icub_gp = np.matmul(robot_base_T_icub_base, icub_base_T_icub_gp)
+        icub_gp_T_panda_gp = np.eye(4)
+        icub_gp_T_panda_gp[2,3] = -0.10
 
         # --- transform grasp pose from icub hand ref frame to robot hand ref frame --- #
         robot_base_T_robot_gp = np.matmul(robot_base_T_icub_gp, self._icub_hand_T_robot_hand)
+        robot_base_T_robot_gp1 = np.matmul(robot_base_T_robot_gp, icub_gp_T_panda_gp)
 
-        return robot_base_T_robot_gp
+        return robot_base_T_robot_gp1
 
 
 
