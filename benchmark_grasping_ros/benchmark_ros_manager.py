@@ -66,7 +66,7 @@ class BenchmarkGraspingManager(object):
         self._cam_info_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/camera_info', CameraInfo)
         self._rgb_sub = message_filters.Subscriber('/camera/color/image_raw', Image)
         self._depth_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/image_raw', Image)
-        self._pc_sub = message_filters.Subscriber('/camera/depth/color/points', PointCloud2)
+        self._pc_sub = message_filters.Subscriber('/camera/depth_registered/points', PointCloud2)
         self._seg_sub = rospy.Subscriber('rgb/image_seg', Image, self.seg_img_callback, queue_size=10)
 
         # --- camera data synchronizer --- #
@@ -237,7 +237,7 @@ class BenchmarkGraspingManager(object):
 
         # define camera view point
         try:
-            camera_pose_tf = self._tfBuffer.lookup_transform( 'panda_link0', self._pc_msg.header.frame_id, rospy.Time())
+            camera_pose_tf = self._tfBuffer.lookup_transform( 'panda_link0', self._cam_info_msg.header.frame_id, rospy.Time())
             self._camera_pose = camera_pose_tf.transform
 
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):

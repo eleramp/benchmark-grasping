@@ -102,7 +102,7 @@ class DexnetGraspPlannerService(DexnetGraspPlanner):
                         fx = raw_camera_info.K[0],
                         fy = raw_camera_info.K[4],
                         cx= raw_camera_info.K[2],
-                        cy = raw_camera_info.K[2],
+                        cy = raw_camera_info.K[5],
                         width = raw_camera_info.width,
                         height= raw_camera_info.height,
                         )
@@ -171,7 +171,7 @@ class DexnetGraspPlannerService(DexnetGraspPlanner):
             return self._create_grasp_planner_srv_msg()
         else:
             return None
-            
+
     def plan_grasp_bb_handler(self, req):
         """Grasp planner request handler.
 
