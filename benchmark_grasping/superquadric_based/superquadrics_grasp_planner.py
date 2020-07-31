@@ -29,7 +29,7 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
 
         # parse cfg yaml file
         with open(cfg_file) as f:
-    
+
             self.cfg = yaml.load(f, Loader=yaml.FullLoader)
 
         super(SuperquadricsGraspPlanner, self).__init__(self.cfg)
@@ -50,7 +50,7 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         self.configure(self.cfg)
 
     def configure(self, cfg):
-        
+
         # ------ Set Superquadric Model parameters ------ #
         self._sq_estimator.SetNumericValue("tol", cfg['sq_model']['tol'])
         self._sq_estimator.SetIntegerValue("print_level", 0)
@@ -74,11 +74,12 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         self._best_grasp = None
         self._camera_data = CameraData()
 
+        self._pointcloud.deletePoints()
         self._superqs = sb.vector_superquadric()
         self._grasp_res = sb.GraspResults()
-        
 
-    def create_camera_data(self, pointcloud: np.ndarray, cam_pos: np.ndarray, cam_quat: np.ndarray, colors= np.ndarray(shape=(0,))):
+
+    def create_camera_data(self, pointcloud: np.ndarray, cam_pos: np.ndarray, cam_quat: np.ndarray, colors= np.ndarray(shape=(0,)), cam_frame="camera_link"):
         """ Create the CameraData object in the right format expected by the superquadric-based grasp planner
 
         Parameters
@@ -118,7 +119,7 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         for i in range(0, pointcloud.shape[1]):
             for j in range(0, pointcloud.shape[2]):
                 pt = np.array([pointcloud[0][i][j], pointcloud[1][i][j], pointcloud[2][i][j]])
-                
+
                 icub_pt = icub_T_cam.dot(np.append(pt, 1))
                 if np.isnan(icub_pt[0]):
                     continue
@@ -140,12 +141,18 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
             self._pointcloud.setPoints(sb_points)
             self._pointcloud.setColors(sb_colors)
         else:
-            print("not enough points in the pointcloud")
+            warnings.warn("Not enough points in the pointcloud")
+
 
         self._camera_data.pc_img = self._pointcloud
 
+        # ------------------- #
+        # --- camera info --- #
+        # ------------------- #
         self._camera_data.extrinsic_params['position'] = cam_pos
         self._camera_data.extrinsic_params['rotation'] = robot_R_cam
+
+        self._camera_data.intrinsic_params['cam_frame'] = cam_frame
 
         return self._camera_data
 
@@ -174,7 +181,7 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         if not ok:
             warnings.warn("Cannot compute a valid grasp pose from the given data")
             return False
-       
+
 
         self.visualize()
 
@@ -191,9 +198,14 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         self._visualizer.resetSuperq()
         self._visualizer.resetPoses()
 
-        self._visualizer.addPoints(self._pointcloud, False)
-        self._visualizer.addSuperq(self._superqs)
-        self._visualizer.addPoses(self._grasp_res.grasp_poses)
+        if self._pointcloud.getNumberPoints() > 0:
+            self._visualizer.addPoints(self._pointcloud, False)
+
+        if np.size(self._superqs, 0) > 0:
+            self._visualizer.addSuperq(self._superqs)
+
+        if np.size(self._grasp_res.grasp_poses, 0) > 0:
+            self._visualizer.addPoses(self._grasp_res.grasp_poses)
 
         self._visualizer.visualize()
 
@@ -333,9 +345,3 @@ class SuperquadricsGraspPlanner(BaseGraspPlanner):
         robot_base_T_robot_gp1 = np.matmul(robot_base_T_robot_gp, icub_gp_T_panda_gp)
 
         return robot_base_T_robot_gp1
-
-
-
-
-
-

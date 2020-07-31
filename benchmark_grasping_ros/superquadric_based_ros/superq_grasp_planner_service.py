@@ -65,7 +65,7 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         """
 
         super(SuperquadricGraspPlannerService, self).__init__(cfg_file)
-        
+
         # Create publisher to publish pose of final grasp.
         self.grasp_pose_publisher = None
         if grasp_publisher_name is not None:
@@ -75,7 +75,7 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         self._grasp_planning_service = rospy.Service(grasp_service_name, GraspPlannerCloud,
                                             self.plan_grasp_handler)
 
-        self._visualizer = sb.Visualizer()
+        self._visualizer = []
 
 
     def read_images(self, req):
@@ -89,15 +89,14 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         # Get the ROS data
         ros_cloud = req.cloud
         cam_position = np.array([req.view_point.position.x, req.view_point.position.y, req.view_point.position.z])
-        cam_quat = np.array([req.view_point.orientation.x, req.view_point.orientation.y, 
-                             req.view_point.orientation.z, req.view_point.orientation.w])        
+        cam_quat = np.array([req.view_point.orientation.x, req.view_point.orientation.y,
+                             req.view_point.orientation.z, req.view_point.orientation.w])
 
         # pointcloud2 to numpy array
-        pc_data = ros_numpy.numpify(ros_cloud) # TODO: this method does not encode color, which results in NaN
+        pc_data = ros_numpy.numpify(ros_cloud) # TODO: fix color decoding as with this method colors result in NaNs
 
         points = np.array([pc_data['x'], pc_data['y'], pc_data['z']])
         camera_data = self.create_camera_data(points, cam_position, cam_quat)
-        print("ciao")
 
         return camera_data
 
@@ -114,13 +113,11 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         self.grasp_poses = []
         ok = self.plan_grasp(camera_data, n_candidates=1)
 
-        #self.visualize()
-
         if ok:
             return self._create_grasp_planner_srv_msg()
         else:
             return None
-            
+
 
     def _create_grasp_planner_srv_msg(self):
         if len(self.grasp_poses) == 0:
@@ -129,9 +126,24 @@ class SuperquadricGraspPlannerService(SuperquadricsGraspPlanner):
         # --- Create `BenchmarkGrasp` return message --- #
         grasp_msg = BenchmarkGrasp()
 
+        # ----
+        # The superquadric-based planner compute the grasp pose expressed wrt the robot base
+        # To be compatible with the message expected by the benchmark manager,
+        # we express it wrt the camera
+        
+        robot_T_gp = np.eye(4)
+        robot_T_gp[:3,:3] = self.best_grasp.rotation
+        robot_T_gp[:3,3] = self.best_grasp.position
+
+        robot_T_cam = np.eye(4)
+        robot_T_cam[:3,:3] = self._camera_data.extrinsic_params['rotation']
+        robot_T_cam[:3,3] = self._camera_data.extrinsic_params['position']
+
+        cam_T_gp = np.matmul(np.linalg.inv(robot_T_cam), robot_T_gp)
+
         # set pose...
         p = PoseStamped()
-        p.header.frame_id = self.best_grasp.ref_frame
+        p.header.frame_id = self._camera_data.intrinsic_params['cam_frame']
         p.header.stamp = rospy.Time.now()
 
         p.pose.position.x = self.best_grasp.position[0]

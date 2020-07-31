@@ -1,7 +1,7 @@
-#include <gpd_ros/grasp_detection_server.h>
+#include <gpd_ros/gpd_grasp_planner_service.h>
 
 
-GraspDetectionServer::GraspDetectionServer(ros::NodeHandle& node, std::string config_file, std::string grasp_service_name,
+GpdGraspPlannerService::GpdGraspPlannerService(ros::NodeHandle& node, std::string config_file, std::string grasp_service_name,
                                     bool publish_rviz, std::string grasp_publisher_name)
 {
   cloud_camera_ = NULL;
@@ -28,11 +28,11 @@ GraspDetectionServer::GraspDetectionServer(ros::NodeHandle& node, std::string co
     grasps_pub_ = node.advertise<geometry_msgs::PoseStamped>(grasp_publisher_name, 10);
   }
 
-  node.getParam("workspace", workspace_); // this wariable is not used I think
+  node.getParam("workspace", workspace_); // Do not know where this wariable is used
 
 }
 
-bool GraspDetectionServer::detectBenchGrasps(benchmark_grasping_ros::GraspPlannerCloud::Request& req,
+bool GpdGraspPlannerService::planGrasps(benchmark_grasping_ros::GraspPlannerCloud::Request& req,
                                         benchmark_grasping_ros::GraspPlannerCloud::Response& res)
 {
   ROS_INFO("Received service request from benchmark...");
@@ -119,13 +119,13 @@ int main(int argc, char** argv)
   bool publish_rviz;
   node.param<bool>("publish_rviz", publish_rviz, false);
 
-  GraspDetectionServer grasp_detection_server(node, config_file, grasp_service_name);
+  GpdGraspPlannerService grasp_detection_server(node, config_file, grasp_service_name);
 
    // Setup grasp service
-  ros::ServiceServer service = node.advertiseService(grasp_service_name, &GraspDetectionServer::detectBenchGrasps,
+  ros::ServiceServer service = node.advertiseService(grasp_service_name, &GpdGraspPlannerService::planGrasps,
                           &grasp_detection_server);
 
-  ROS_INFO("GPD Grasp detection service is waiting for a point cloud ...");
+  ROS_INFO("GPD Grasp planner service is waiting for a point cloud ...");
 
   ros::spin();
 

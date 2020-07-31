@@ -5,9 +5,9 @@ This file contains the code of the benchmark service client.
 Its features are:
 
 1. connect to the ros camera topics to read rgb, depth, point cloud, camera parameters
-2. send a request to a grasp planning algorithm of type graspPlanner<algorithm>.srv
+2. send a request to a grasp planning algorithm of type GraspPlanner.srv / GraspPlannerCloud.srv
 3. connect with robot to send cartesian grasp pose commands
-4. assess if the grasp was successful or not
+(4. assess if the grasp was successful or not)
 
 """
 
@@ -52,15 +52,17 @@ class BenchmarkGraspingManager(object):
         # --- grasp planner service --- #
         self._grasp_planner_srv = GRASP_PLANNER_SRV[grasp_planner_service]
 
+        rospy.loginfo("BenchmarkGraspingManager: Waiting for grasp planner service...")
         rospy.wait_for_service(grasp_planner_service_name, timeout=10.0)
         self._grasp_planner = rospy.ServiceProxy(grasp_planner_service_name, self._grasp_planner_srv)
-        rospy.loginfo("BenchmarkGraspingManager: Connected with service {}".format(grasp_planner_service_name))
+        rospy.loginfo("...Connected with service {}".format(grasp_planner_service_name))
 
         # --- panda service --- #
         panda_service_name =  "/panda_grasp"
-        rospy.wait_for_service(panda_service_name, timeout=60.0)
-        self._panda = rospy.ServiceProxy(panda_service_name, PandaGrasp)
-        rospy.loginfo("BenchmarkGraspingManager: Connected with service {}".format(panda_service_name))
+        rospy.loginfo("BenchmarkGraspingManager: Waiting for panda control service...")
+        # rospy.wait_for_service(panda_service_name, timeout=60.0)
+        # self._panda = rospy.ServiceProxy(panda_service_name, PandaGrasp)
+        # rospy.loginfo("...Connected with service {}".format(panda_service_name))
 
         # --- subscribers to camera topics --- #
         self._cam_info_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/camera_info', CameraInfo)
@@ -72,7 +74,6 @@ class BenchmarkGraspingManager(object):
         # --- camera data synchronizer --- #
         self._tss = message_filters.ApproximateTimeSynchronizer([self._cam_info_sub, self._rgb_sub, self._depth_sub, self._pc_sub],
                                                                 queue_size=1, slop=0.5)
-
         self._tss.registerCallback(self._camera_data_callback)
 
         # --- robot/camera transform listener --- #
@@ -89,6 +90,7 @@ class BenchmarkGraspingManager(object):
         self._seg_msg = NEW_MSG
 
         self._new_camera_data = False
+        self._abort = False
 
     # ---------------------- #
     # Grasp planning handler #
@@ -104,66 +106,85 @@ class BenchmarkGraspingManager(object):
         if self._verbose:
             print("Received new command from user...")
 
-        if req.cmd.data != "grasp":
-            warnings.warn("Wrong input {}{}. "
-            "The only supported command is 'grasp', to compute and execute a new grasp".format(type(req.cmd), req.cmd))
-            return Bool(False)
+        available_commands = "help : display available commands\n \
+                              grasp: compute a new grasp and send it to the robot for execution\n \
+                              abort: interrupt grasp computation / do not send computed pose to the robot"
 
-        # --- get images --- #
-        if self._verbose:
-            print("... waiting for images ...")
+        self._abort = False
 
-        count = 0
-        while not self._new_camera_data and count < 100:
-            count += 1
+        if req.cmd.data == "help":
+            print("Available commands are:\n", available_commands)
+            return Bool(True)
 
-        if count >= 100:
-            print("...no images received")
-            return Bool(False)
+        elif req.cmd.data == "grasp":
 
-        self._new_camera_data = False
+            # --- get images --- #
+            if self._verbose:
+                print("... waiting for images ...")
 
-        # --- create srv request --- #
-        # GraspPlanner
-        if self._grasp_planner_srv is GraspPlanner:
+            count = 0
+            while not self._new_camera_data and count < 1000:
+                count += 1
 
-            planner_req = GraspPlannerRequest()
+            if count >= 1000:
+                print("...no images received")
+                return Bool(False)
 
-            planner_req.color_image = self._rgb_msg
-            planner_req.depth_image = self._depth_msg
-            planner_req.camera_info = self._cam_info_msg
+            self._new_camera_data = False
 
-        # or GraspPlannerCloud
-        elif self._grasp_planner_srv is GraspPlannerCloud:
+            # --- create srv request --- #
+            # GraspPlanner
+            if self._grasp_planner_srv is GraspPlanner:
 
-            planner_req = GraspPlannerCloudRequest()
+                planner_req = GraspPlannerRequest()
 
-            # define cloud
-            planner_req.cloud = self._pc_msg
+                planner_req.color_image = self._rgb_msg
+                planner_req.depth_image = self._depth_msg
+                planner_req.camera_info = self._cam_info_msg
 
-            camera_pose_msg = geometry_msgs.msg.Pose()
+            # or GraspPlannerCloud
+            elif self._grasp_planner_srv is GraspPlannerCloud:
 
-            camera_pose_msg.position.x = self._camera_pose.translation.x
-            camera_pose_msg.position.y = self._camera_pose.translation.y
-            camera_pose_msg.position.z = self._camera_pose.translation.z
-            camera_pose_msg.orientation = self._camera_pose.rotation
+                planner_req = GraspPlannerCloudRequest()
 
-            planner_req.view_point = camera_pose_msg
+                # define cloud
+                planner_req.cloud = self._pc_msg
 
-        if self._verbose:
-            print("... send request to server ...")
+                camera_pose_msg = geometry_msgs.msg.Pose()
 
-        try:
-            reply = self._grasp_planner(planner_req)
+                camera_pose_msg.position.x = self._camera_pose.translation.x
+                camera_pose_msg.position.y = self._camera_pose.translation.y
+                camera_pose_msg.position.z = self._camera_pose.translation.z
+                camera_pose_msg.orientation = self._camera_pose.rotation
 
-            print("Service {} reply is: \n{}" .format(self._grasp_planner.resolved_name, reply))
+                planner_req.view_point = camera_pose_msg
 
-        except rospy.ServiceException as e:
-            print("Service {} call failed: {}" .format(self._grasp_planner.resolved_name, e))
+            if self._verbose:
+                print("... send request to server ...")
 
-            return Bool(False)
+            if self._abort:
+                rospy.loginfo("grasp computation was aborted by the user")
+                return Bool(False)
 
-        return self.execute_grasp(reply.grasp, self._camera_pose)
+            try:
+                reply = self._grasp_planner(planner_req)
+
+                print("Service {} reply is: \n{}" .format(self._grasp_planner.resolved_name, reply))
+
+            except rospy.ServiceException as e:
+                print("Service {} call failed: {}" .format(self._grasp_planner.resolved_name, e))
+
+                return Bool(False)
+
+            if self._abort:
+                rospy.loginfo("grasp execution was aborted by the user")
+                return Bool(False)
+
+            return Bool(True) # self.execute_grasp(reply.grasp, self._camera_pose)
+
+        elif req.cmd.data == "abort":
+            self._abort = True
+            return Bool(True)
 
     def execute_grasp(self, grasp, cam_pose):
         """
@@ -182,8 +203,8 @@ class BenchmarkGraspingManager(object):
         cam_quat = cam_pose.rotation
         cam_pose = cam_pose.translation
         w_T_cam = np.eye(4)
-        w_T_cam[:3,:3] = quaternion_to_matrix([cam_quat.x, cam_quat.y, cam_quat.z, cam_quat.w])
-        w_T_cam[:3,3] = np.array([cam_pose.x, cam_pose.y, cam_pose.z])
+        w_T_cam[:3, :3] = quaternion_to_matrix([cam_quat.x, cam_quat.y, cam_quat.z, cam_quat.w])
+        w_T_cam[:3, 3] = np.array([cam_pose.x, cam_pose.y, cam_pose.z])
 
         w_T_grasp = np.matmul(w_T_cam, cam_T_grasp)
         print("w_T_cam\n ", w_T_cam)

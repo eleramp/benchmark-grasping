@@ -254,7 +254,7 @@ class DexnetGraspPlanner(BaseGraspPlanner):
         cam_T_grasp = np.append(cam_T_grasp, np.array([[0, 0, 0, 1]]), axis=0)
 
         grasp_target_T_panda_ef = np.eye(4)
-        grasp_target_T_panda_ef[2, 3] = -0.12
+        grasp_target_T_panda_ef[2, 3] = -0.13
 
         cam_T_grasp = np.matmul(cam_T_grasp, grasp_target_T_panda_ef)
 

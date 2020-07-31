@@ -7,9 +7,8 @@ benchmark_grasping_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg
 
   Eigen::Vector3d pos = hand.getPosition();
   Eigen::Vector3d rot_x = hand.getAxis();
-  Eigen::Vector3d binormal = hand.getBinormal();
+  //Eigen::Vector3d rot_y = hand.getBinormal();
   Eigen::Vector3d rot_z = hand.getApproach();
-
   Eigen::Vector3d rot_y = rot_z.cross(rot_x);
 
   Eigen::Matrix4d rotation;
@@ -22,7 +21,7 @@ benchmark_grasping_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg
 
   Eigen::Matrix4d offset;
   offset.setIdentity();
-  offset(3,2) = -0.08;
+  offset(2,3) = -0.05;
 
   Eigen::Matrix4d cam_T_grasp = rotation * offset;
 
@@ -34,8 +33,9 @@ benchmark_grasping_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg
   msg.pose.header.frame_id = header.frame_id;
   msg.pose.header.stamp = ros::Time::now();
 
-
-  tf::pointEigenToMsg(hand.getPosition(), msg.pose.pose.position);
+  msg.pose.pose.position.x = cam_T_grasp(0,3);
+  msg.pose.pose.position.y = cam_T_grasp(1,3);
+  msg.pose.pose.position.z = cam_T_grasp(2,3);
 
   msg.pose.pose.orientation.w = quat.w();
   msg.pose.pose.orientation.x = quat.x();

@@ -46,16 +46,9 @@
 #include <gpd/util/cloud.h>
 #include <gpd/grasp_detector.h>
 
-// this project (services)
-#include <gpd_ros/detect_grasps.h>
-
 // BENCHMARK SERVICE/MSG
 #include <benchmark_grasping_ros/GraspPlannerCloud.h>
 #include <benchmark_grasping_ros/BenchmarkGrasp.h>
-
-// this project (messages)
-#include <gpd_ros/GraspConfig.h>
-#include <gpd_ros/GraspConfigList.h>
 
 // this project (headers)
 #include <gpd_ros/grasp_messages.h>
@@ -64,7 +57,7 @@
 typedef pcl::PointCloud<pcl::PointXYZRGBA> PointCloudRGBA;
 typedef pcl::PointCloud<pcl::PointNormal> PointCloudPointNormal;
 
-class GraspDetectionServer
+class GpdGraspPlannerService
 {
 public:
 
@@ -72,13 +65,13 @@ public:
    * \brief Constructor.
    * \param node the ROS node
   */
-  GraspDetectionServer(ros::NodeHandle& node, std::string config_file, std::string grasp_service_name="",
+  GpdGraspPlannerService(ros::NodeHandle& node, std::string config_file, std::string grasp_service_name="",
                       bool publish_rviz=false, std::string grasp_publisher_name="");
 
   /**
    * \brief Destructor.
   */
-  ~GraspDetectionServer()
+  ~GpdGraspPlannerService()
   {
     delete cloud_camera_;
     delete grasp_detector_;
@@ -90,7 +83,7 @@ public:
    * \param req the service request
    * \param res the service response
    */
-  bool detectBenchGrasps(benchmark_grasping_ros::GraspPlannerCloud::Request& req,
+  bool planGrasps(benchmark_grasping_ros::GraspPlannerCloud::Request& req,
                     benchmark_grasping_ros::GraspPlannerCloud::Response& res);
 
 
