@@ -7,7 +7,7 @@ SHELL ["/bin/bash", "-c"]
 # Install packages
 # ================
 RUN apt-get update &&\
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --no-install-recommends --fix-missing\
         sudo \
         gosu \
         software-properties-common \
@@ -18,6 +18,7 @@ RUN apt-get update &&\
         unzip \
         libgl1-mesa-glx \
         libgl1-mesa-dri \
+        mesa-common-dev \
         apt-transport-https \
         apt-utils \
         dbus-x11 \
@@ -28,17 +29,41 @@ RUN apt-get update &&\
         gnupg \
         gnupg2 \
         xvfb \
+        mercurial \
+        freeglut3-dev \
+        libflann-dev \
         &&\
     rm -rf /var/lib/apt/lists/*
 
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add - && \
     apt-add-repository "deb https://apt.kitware.com/ubuntu/ `lsb_release -cs` main" &&\
     apt-get update &&\
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --no-install-recommends --fix-missing\
         gcc-8 \
         g++-8 \
         cmake \
         cmake-curses-gui \
+        mc \
+        lynx \
+        libqhull* \
+        pkg-config \
+        libxmu-dev \
+        libxi-dev \
+        libboost-all-dev \
+        libeigen3-dev \
+        libusb-1.0-0-dev \
+        libudev-dev \
+        doxygen \
+        graphviz \
+        libgtest-dev \
+        libpcap-dev \
+        libgtk2.0-dev \
+        libavcodec-dev \
+        libavformat-dev \
+        libjpeg.dev \
+        libtiff4.dev \
+        libswscale-dev \
+        libjasper-dev
         &&\
     rm -rf /var/lib/apt/lists/*
 
@@ -55,8 +80,8 @@ RUN apt-get update &&\
     dpkg-reconfigure --frontend noninteractive tzdata
 
 
-# Install python 3
-# ==============
+# Install python3
+# ===============
 ENV PYTHON_VERSION=3.6
 RUN add-apt-repository ppa:deadsnakes/ppa &&\
     apt-get update &&\
@@ -104,109 +129,126 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
     rosdep update &&\
     echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /etc/bash.bashrc
 
-
-# Install superquadric-lib and its dependencies: VTK, ipopt, SWIG
-# ===============================================================
-
+# Set workspace directories
+# =========================
 ENV WS_DIR=/workspace
 ENV CATKIN_WS_DIR=${WS_DIR}/catkin_ws
 ENV WS_INSTALL=${WS_DIR}/install
 ENV WS_SOURCES=${WS_DIR}/sources
 ARG WS_BIN=${WS_SOURCES}/bin
 
-ENV CC=gcc-8
-ENV CXX=g++-8
-
-# VTK
-RUN mkdir -p ${WS_SOURCES} && cd ${WS_SOURCES} &&\
-    git clone https://gitlab.kitware.com/vtk/vtk.git && \
-    cd vtk && git checkout tags/v8.2.0 &&\
-    mkdir -p build && cd build && \
-    cmake \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=${WS_INSTALL} \
-      -DVTK_PYTHON_VERSION=${PYTHON_VERSION} \
-      -DVTK_WRAP_PYTHON=ON \
-      .. &&\
-    make -j8 && make install &&\
-    rm -rf ${WS_SOURCES}/vtk
-
-# SWIG
-RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add - && \
-    apt-add-repository "deb https://apt.kitware.com/ubuntu/ `lsb_release -cs` main" &&\
-    apt-get update &&\
-    apt-get install -y --no-install-recommends \
-        autotools-dev \
-        automake \
-        bison \
-        libpcre3-dev &&\
-    rm -rf /var/lib/apt/lists/* &&\
-    cd /tmp/ &&\
-    curl https://netcologne.dl.sourceforge.net/project/swig/swig/swig-4.0.1/swig-4.0.1.tar.gz | tar xvz &&\
-    cd swig-4.0.1 &&\
-    ./configure && \
-    make -j4 &&\
-    make install &&\
-    rm -r /tmp/swig-4.0.1
-
-# IPOPT
-RUN apt-get update &&\
-    apt-get install -y --no-install-recommends \
-        file \
-        gfortran \
-        &&\
-    rm -rf /var/lib/apt/lists/* &&\
-    mkdir -p ${WS_SOURCES}/ipopt_tmp && cd ${WS_SOURCES}/ipopt_tmp &&\
-    curl -o coinbrew https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew &&\
-    chmod +x coinbrew &&\
-    ./coinbrew fetch Ipopt:releases/3.13.0 --no-prompt &&\
-    ./coinbrew build Ipopt --prefix=${WS_INSTALL} --no-prompt &&\
-    ./coinbrew install Ipopt --no-prompt && \
-    rm -rf ${WS_SOURCES}/ipopt_tmp
-
-
-ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WS_INSTALL}/lib
-ENV IPOPT_DIR=${WS_INSTALL}
-
 # Create a new runtimeusers group
 RUN groupadd -K GID_MIN=900 -K GID_MAX=1100 runtimeusers
 
-# Install superquadric-lib
-RUN mkdir ${WS_INSTALL}/include/coin/ &&\
-    cp -r ${WS_INSTALL}/include/coin-or/* ${WS_INSTALL}/include/coin/ && \
+# Install Eigen
+# =============
+RUN mkdir -p ${WS_SOURCES} &&\
     cd ${WS_SOURCES} &&\
-    git clone https://github.com/robotology/superquadric-lib.git && \
-    cd ${WS_SOURCES}/superquadric-lib &&\
-    mkdir -p build && cd build &&\
-    cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=${WS_INSTALL} \
-        -DENABLE_BINDINGS=ON \
-        -DYARP_EXE=OFF \
-        -DVTK_DIR=${WS_INSTALL}/lib/cmake/vtk-8.2 \
-        .. &&\
-    make -j8 && make install &&\
-    find ${IIT_DIR} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ &&\
-    find ${IIT_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
+    && git clone -b tags/3.2.0 https://github.com/eigenteam/eigen-git-mirror eigen \
+    && cd eigen \
+    && mkdir build \
+    && cd build \
+    && cmake  -D CMAKE_INSTALL_PREFIX=${WS_INSTALL} .. \
+    && make -j8 \
+    && make install \
+    && find ${WS_SOURCES} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ && \
+    && find ${WS_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
 
-ENV PYTHONPATH=${PYTHONPATH}:${WS_INSTALL}/lib/superquadriclib/bindings
+# Install VTK
+# ============
+RUN apt-get update &&\
+    apt-get install -y --no-install-recommends\
+    libvtk7-* &&\
+    rm -rf /var/lib/apt/lists/*
+
+# Install PCL
+# ===========
+RUN cd ${WS_SOURCES}\
+    && wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.9.0.zip \
+    && unzip pcl-1.9.0.zip \
+    && cd pcl-pcl-1.9.0 \
+    && mkdir build \
+    && cd build \
+    && cmake -D CMAKE_BUILD_TYPE=None -D BUILD_GPU=ON -D BUILD_apps=ON -D BUILD_examples=ON  -DCMAKE_INSTALL_PREFIX=${WS_INSTALL}.. \
+    && make -j 8 \
+    && make install \
+    && find ${WS_SOURCES} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ && \
+    && find ${WS_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
+
+# Install Opencv
+# ==============
+RUN cd ${WS_SOURCES}\
+    && wget https://github.com/opencv/opencv/archive/3.4.3.zip \
+    && unzip 3.4.3.zip \
+    && cd opencv-3.4.3 \
+    && mkdir build \
+    && cd build \
+    && cmake -D WITH_OPENMP=ON -D ENABLE_PRECOMPILED_HEADERS=OFF  -DCMAKE_INSTALL_PREFIX=${WS_INSTALL} ..\
+    && make -j 8 \
+    && make install \
+    && find ${WS_SOURCES} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ && \
+    && find ${WS_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
+
+# Install CAFFE
+# =============
+RUN apt-get update &&\
+    apt-get install -y \
+    libprotobuf-dev \
+    libleveldb-dev \
+    libsnappy-dev \
+    libopencv-dev \
+    libhdf5-serial-dev \
+    protobuf-compiler \
+    libboost-all-dev \
+    libatlas-base-dev \
+    liblmdb-dev \
+    libturbojpeg \
+    libturbojpeg0-dev \
+    libgoogle-glog-dev &&\
+    rm -rf /var/lib/apt/lists/* &&\
+    cd ${WS_SOURCES}\
+    && git clone https://github.com/fbottarel/caffe.git &&\
+    cd ${WS_SOURCES}/caffe \
+    && mkdir build \
+    && cd build \
+    && cmake -D BUILD_python=OFF \
+        -D BUILD_python_layer=OFF \
+        -D BLAS=Atlas \
+        -D CUDA_rt_LIBRARY=/usr/local/cuda/lib64/libcudart.so \
+        -D CMAKE_INSTALL_PREFIX=${WS_INSTALL} \
+        ../ \
+    && make -j 8 \
+    && make install \
+    && find ${WS_SOURCES} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ && \
+    && find ${WS_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
+
+# Install gpd
+# ===========
+RUN cd ${WS_SOURCES}\
+    && git clone https://github.com/atenpas/gpd gpd \
+    && cd gpd \
+    && mkdir build \
+    && cd build \
+    && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+        -D CMAKE_INSTALL_PREFIX=${WS_INSTALL}\
+        -D USE_CAFFE=ON \
+        .. \
+    && make -j8  \
+    && find ${WS_SOURCES} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ && \
+    && find ${WS_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
 
 # Create catkin_ws with dependencies/ros packages for python3
 # ===========================================================
-RUN apt-get update &&\
-    apt-get install -y --no-install-recommends pyyaml &&\
-    mkdir -p ${CATKIN_WS_DIR}/src && \
+RUN mkdir -p ${CATKIN_WS_DIR}/src && \
     cd ${CATKIN_WS_DIR} &&\
     wstool init &&\
     wstool set -y src/geometry2 --git https://github.com/ros/geometry2 -v 0.6.5 &&\
     wstool set -y src/vision_opencv --git https://github.com/ros-perception/vision_opencv -v 1.13.0 &&\
-    wstool set -y src/ros_numpy https://github.com/eric-wieser/ros_numpy &&\
     wstool up &&\
     rosdep update && rosdep install --from-paths src --ignore-src -y -r &&\
     rm -rf /var/lib/apt/lists/* &&\
     catkin config --extend /opt/ros/${ROS_DISTRO} -DPYTHON_EXECUTABLE=/usr/bin/python3 -DCMAKE_BUILD_TYPE=Release && \
     catkin build  -j8 && \
-    # add here benchmark-grasping folder
     echo 'source ${CATKIN_WS_DIR}/devel/setup.bash' >> /etc/bash.bashrc &&\
     find ${CATKIN_WS_DIR} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
 
@@ -225,7 +267,6 @@ RUN cd ${CATKIN_WS_DIR} &&\
 # =============
 # FIX OWNERSHIP
 # =============
-
 RUN find ${WS_DIR} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+ &&\
     find ${WS_INSTALL} -not -group runtimeusers -exec chgrp runtimeusers {} \; -exec chmod g+rw {} \+
 
@@ -235,7 +276,6 @@ ENV NVIDIA_DRIVER_CAPABILITIES=all
 
 # Image initialization
 # ====================
-
 ENV USERNAME=docker
 
 # Include a custom bashrc
