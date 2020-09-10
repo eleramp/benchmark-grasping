@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+# Copyright (C) 2019 Istituto Italiano di Tecnologia (IIT)
+# This software may be modified and distributed under the terms of the
+# LGPL-2.1+ license. See the accompanying LICENSE file for details.
+
 """
 This file contains the code of the benchmark service client.
 Its features are:
@@ -41,7 +46,7 @@ GRASP_PLANNER_SRV = {
     }
 
 
-class BenchmarkGraspingManager(object):
+class GraspingBenchmarksManager(object):
     def __init__(self, grasp_planner_service_name, grasp_planner_service, user_cmd_service_name, panda_service_name, verbose=False):
 
         self._verbose = verbose
@@ -52,17 +57,17 @@ class BenchmarkGraspingManager(object):
         # --- grasp planner service --- #
         self._grasp_planner_srv = GRASP_PLANNER_SRV[grasp_planner_service]
 
-        rospy.loginfo("BenchmarkGraspingManager: Waiting for grasp planner service...")
-        rospy.wait_for_service(grasp_planner_service_name, timeout=10.0)
+        rospy.loginfo("GraspingBenchmarksManager: Waiting for grasp planner service...")
+        rospy.wait_for_service(grasp_planner_service_name, timeout=30.0)
         self._grasp_planner = rospy.ServiceProxy(grasp_planner_service_name, self._grasp_planner_srv)
         rospy.loginfo("...Connected with service {}".format(grasp_planner_service_name))
 
         # --- panda service --- #
         panda_service_name =  "/panda_grasp"
-        rospy.loginfo("BenchmarkGraspingManager: Waiting for panda control service...")
-        # rospy.wait_for_service(panda_service_name, timeout=60.0)
-        # self._panda = rospy.ServiceProxy(panda_service_name, PandaGrasp)
-        # rospy.loginfo("...Connected with service {}".format(panda_service_name))
+        rospy.loginfo("GraspingBenchmarksManager: Waiting for panda control service...")
+        rospy.wait_for_service(panda_service_name, timeout=60.0)
+        self._panda = rospy.ServiceProxy(panda_service_name, PandaGrasp)
+        rospy.loginfo("...Connected with service {}".format(panda_service_name))
 
         # --- subscribers to camera topics --- #
         self._cam_info_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/camera_info', CameraInfo)
@@ -180,7 +185,7 @@ class BenchmarkGraspingManager(object):
                 rospy.loginfo("grasp execution was aborted by the user")
                 return Bool(False)
 
-            return Bool(True) # self.execute_grasp(reply.grasp, self._camera_pose)
+            return self.execute_grasp(reply.grasp, self._camera_pose)
 
         elif req.cmd.data == "abort":
             self._abort = True
@@ -277,7 +282,7 @@ class BenchmarkGraspingManager(object):
 
 if __name__ == "__main__":
     # Init node
-    rospy.init_node('benchmark_grasping_manager')
+    rospy.init_node('grasping_benchmarks_manager')
 
     # Get rosparam config
     grasp_planner_service_name = rospy.get_param("~grasp_planner_service_name")
@@ -286,7 +291,7 @@ if __name__ == "__main__":
     panda_service_name = "panda_grasp" # rospy.get_param("/panda_service_name")
 
     # Instantiate benchmark client class
-    bench_manager = BenchmarkGraspingManager(grasp_planner_service_name, grasp_planner_service, new_grasp_service_name, panda_service_name, verbose=True)
+    bench_manager = GraspingBenchmarksManager(grasp_planner_service_name, grasp_planner_service, new_grasp_service_name, panda_service_name, verbose=True)
 
     # Spin forever.
     rospy.spin()

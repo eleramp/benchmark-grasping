@@ -1,3 +1,7 @@
+# Copyright (C) 2019 Istituto Italiano di Tecnologia (IIT)
+# This software may be modified and distributed under the terms of the
+# LGPL-2.1+ license. See the accompanying LICENSE file for details.
+
 import os
 import numpy as np
 from benchmark_grasping.base import transformations
@@ -102,5 +106,3 @@ class Grasp6D(object):
         pos = position.squeeze()
         if len(pos.shape) != 1 or pos.shape[0] != 3:
             raise ValueError('position must be specified as a 3-vector, 3x1 ndarray, or 1x3 ndarray')
-
-

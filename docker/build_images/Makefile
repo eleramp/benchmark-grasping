@@ -1,18 +1,31 @@
-#default: latest intel nvidia
+# ============ #
+# Build images #
+# ============ #
 
-# =====
-# TOOLS
-# =====
+ifndef USER_NAME
+$(error USER_NAME not defined)
+endif
 
-superquadric:
-	docker build --rm \
+dexnet:
+	DOCKER_BUILDKIT=1 docker build --ssh default --rm \
 	    --build-arg from=nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04 \
-	    --tag eleramp/superquadric_grasp_planner:latest \
-	    superquadric_based/
+	    --tag $(USER_NAME)/benchmark_dexnet:latest \
+	    ../dexnet/
 
-gpnet:
+gpd:
+	DOCKER_BUILDKIT=1 docker build --ssh default --rm \
+	    --build-arg from=nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04 \
+	    --tag $(USER_NAME)/benchmark_gpd:latest \
+	    ../gpd/
+
+superquadrics:
+	DOCKER_BUILDKIT=1 docker build --ssh default --rm \
+		--build-arg from=nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04 \
+	    --tag $(USER_NAME)/benchmark_superquadrics:latest \
+	    ../superquadrics_based/
+
+6dgraspnet:
 	docker build --rm \
 		--build-arg from=nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04 \
-		--tag eleramp/graspnet:latest \
-		graspnet/
-
+		--tag $(USER_NAME)/benchmark_6dgraspnet:latest \
+		../6dgraspnet/

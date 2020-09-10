@@ -47,8 +47,8 @@
 #include <gpd/grasp_detector.h>
 
 // BENCHMARK SERVICE/MSG
-#include <benchmark_grasping_ros/GraspPlannerCloud.h>
-#include <benchmark_grasping_ros/BenchmarkGrasp.h>
+#include <grasping_benchmarks_ros/GraspPlannerCloud.h>
+#include <grasping_benchmarks_ros/BenchmarkGrasp.h>
 
 // this project (headers)
 #include <gpd_ros/grasp_messages.h>
@@ -83,8 +83,8 @@ public:
    * \param req the service request
    * \param res the service response
    */
-  bool planGrasps(benchmark_grasping_ros::GraspPlannerCloud::Request& req,
-                    benchmark_grasping_ros::GraspPlannerCloud::Response& res);
+  bool planGrasps(grasping_benchmarks_ros::GraspPlannerCloud::Request& req,
+                    grasping_benchmarks_ros::GraspPlannerCloud::Response& res);
 
 
 private:

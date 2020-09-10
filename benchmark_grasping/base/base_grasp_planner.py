@@ -1,5 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# Copyright (C) 2019 Istituto Italiano di Tecnologia (IIT)
+# This software may be modified and distributed under the terms of the
+# LGPL-2.1+ license. See the accompanying LICENSE file for details.
 
 import json
 import math
@@ -7,7 +8,6 @@ import os
 import time
 
 import numpy as np
-import rospy
 from benchmark_grasping.base.grasp import Grasp6D
 
 class CameraData:
@@ -85,4 +85,3 @@ class BaseGraspPlanner(object):
             raise ValueError('Invalid grasp type. Must be `benchmark_grasping.grasp.Grasp6D`')
 
         self._best_grasp = best_grasp
-

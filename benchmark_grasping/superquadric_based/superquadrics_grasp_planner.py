@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# Copyright (C) 2019 Istituto Italiano di Tecnologia (IIT)
+# This software may be modified and distributed under the terms of the
+# LGPL-2.1+ license. See the accompanying LICENSE file for details.
 
 import math
 import os

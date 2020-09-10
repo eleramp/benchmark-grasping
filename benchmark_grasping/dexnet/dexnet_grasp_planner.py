@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Copyright ©2017. The Regents of the University of California (Regents).
 All Rights Reserved. Permission to use, copy, modify, and distribute this
@@ -29,6 +27,11 @@ Author
 -----
 Vishal Satish & Jeff Mahler
 """
+
+# Copyright (C) 2019 Istituto Italiano di Tecnologia (IIT)
+# This software may be modified and distributed under the terms of the
+# LGPL-2.1+ license. See the accompanying LICENSE file for details.
+
 import json
 import math
 import os

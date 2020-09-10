@@ -1,6 +1,5 @@
 import os
 import setuptools
-from catkin_pkg.python_setup import generate_distutils_setup
 
 
 setup_py_dir = os.path.dirname(os.path.realpath(__file__))
@@ -25,4 +24,6 @@ setuptools.setup(
     author_email="elena.rampone@iit.it",
     packages=setuptools.find_packages(),
     package_data={'benchmark_grasping': need_files},
+    python_requires='>=3',
+    install_requires=['scipy', 'numpy', 'pyyaml'],
 )

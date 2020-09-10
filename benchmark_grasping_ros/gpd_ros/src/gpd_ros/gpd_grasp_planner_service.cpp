@@ -32,8 +32,8 @@ GpdGraspPlannerService::GpdGraspPlannerService(ros::NodeHandle& node, std::strin
 
 }
 
-bool GpdGraspPlannerService::planGrasps(benchmark_grasping_ros::GraspPlannerCloud::Request& req,
-                                        benchmark_grasping_ros::GraspPlannerCloud::Response& res)
+bool GpdGraspPlannerService::planGrasps(grasping_benchmarks_ros::GraspPlannerCloud::Request& req,
+                                        grasping_benchmarks_ros::GraspPlannerCloud::Response& res)
 {
   ROS_INFO("Received service request from benchmark...");
 
@@ -85,7 +85,7 @@ bool GpdGraspPlannerService::planGrasps(benchmark_grasping_ros::GraspPlannerClou
     cloud_camera_header_.frame_id = cloud_ros.header.frame_id;
 
     // 4. Create benchmark grasp reply.
-    benchmark_grasping_ros::BenchmarkGrasp bench_grasp = GraspMessages::convertToBenchmarkGraspMsg(*grasps[0], cloud_camera_header_);
+    grasping_benchmarks_ros::BenchmarkGrasp bench_grasp = GraspMessages::convertToBenchmarkGraspMsg(*grasps[0], cloud_camera_header_);
 
     // Publish grasp on topic
     grasps_pub_.publish(bench_grasp.pose);

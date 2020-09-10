@@ -21,10 +21,10 @@
     <arg name="grasp_publisher_name"              default="candidate_grasp" />
 
     <arg name="model_name"                        default="GQCNN-4.0-PJ" />
-    <arg name="model_dir"                         default="/home/icub/workspace/gqcnn/models" />
+    <arg name="model_dir"                         default="/workspace/sources/gqcnn/models" />
     <arg name="fully_conv"                        default="False" />
 
-    <node name="dexnet_grasp_planner"  pkg="benchmark_grasping_ros" type="dexnet_grasp_planner_server.py" ns="$(arg ns)" output="screen" >
+    <node name="dexnet_grasp_planner"  pkg="grasping_benchmarks_ros" type="dexnet_grasp_planner_service.py" ns="$(arg ns)" output="screen" >
     	<param name="model_name"                          value="$(arg model_name)" />
     	<param name="model_dir"                           value="$(arg model_dir)" />
     	<param name="fully_conv"                          value="$(arg fully_conv)" />
@@ -35,7 +35,7 @@
     <!-- Launch Manager -->
     <arg name="user_cmd_service_name"              default="user_cmd" />
 
-    <node name="grasp_benchmark_manager" pkg="benchmark_grasping_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
+    <node name="grasp_benchmark_manager" pkg="grasping_benchmarks_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
         <param name="user_cmd_service_name"        value="$(arg user_cmd_service_name)" />
         <param name="grasp_planner_service_name"    value="$(arg grasp_planner_service_name)" />
         <param name="grasp_planner_service"         value="$(arg grasp_planner_service)" />
@@ -52,10 +52,10 @@
     <arg name="grasp_planner_service_name"        default="gpd_grasp_planner_service" />
     <arg name="grasp_planner_service"             default="GraspPlannerCloud" />
     <arg name="grasp_publisher_name"              default="candidate_grasp" />
-    <arg name="config_file"                       default="/home/icub/workspace/gpd/cfg/ros_caffe_params.cfg" />
+    <arg name="config_file"                       default="$(find grasping_benchmarks_ros)/gpd_ros/cfg/ros_caffe_params.cfg" />
     <arg name="rviz"                              default="true" />
 
-    <node name="$(arg grasp_planner_node_name)"  pkg="benchmark_grasping_ros"  type="gpd_grasp_planner_service" ns="$(arg ns)" output="screen" >
+    <node name="$(arg grasp_planner_node_name)"  pkg="grasping_benchmarks_ros"  type="gpd_grasp_planner_service" ns="$(arg ns)" output="screen" >
       <param name="grasp_planner_service_name"          value="$(arg grasp_planner_service_name)" />
       <param name="grasp_publisher_name"                value="$(arg grasp_publisher_name)" />
       <param name="config_file"                         value="$(arg config_file)" />
@@ -65,7 +65,7 @@
     <!-- Launch Manager -->
     <arg name="user_cmd_service_name"              default="user_cmd" />
 
-    <node name="grasp_benchmark_manager" pkg="benchmark_grasping_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
+    <node name="grasp_benchmark_manager" pkg="grasping_benchmarks_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
         <param name="user_cmd_service_name"         value="$(arg user_cmd_service_name)" />
         <param name="grasp_planner_service_name"    value="$(arg grasp_planner_node_name)/$(arg grasp_planner_service_name)" />
         <param name="grasp_planner_service"         value="$(arg grasp_planner_service)" />
@@ -82,9 +82,9 @@
     <arg name="grasp_planner_service_name"        default="superq_grasp_planner_service" />
     <arg name="grasp_planner_service"             default="GraspPlannerCloud" />
     <arg name="grasp_publisher_name"              default="candidate_grasp" />
-    <arg name="config_file"                       default="/catkin_ws/src/benchmark-grasping/benchmark_grasping_ros/superquadric_based_ros/cfg/config_panda.yaml" />
+    <arg name="config_file"                       default="$(find grasping_benchmarks_ros)/superquadric_based_ros/cfg/config_panda.yaml" />
 
-    <node name="$(arg grasp_planner_node_name)"  pkg="benchmark_grasping_ros"  type="superq_grasp_planner_server.py" ns="$(arg ns)" output="screen" >
+    <node name="$(arg grasp_planner_node_name)"  pkg="grasping_benchmarks_ros"  type="superq_grasp_planner_service.py" ns="$(arg ns)" output="screen" >
       <param name="grasp_planner_service_name"          value="$(arg grasp_planner_service_name)" />
       <param name="grasp_publisher_name"                value="$(arg grasp_publisher_name)" />
       <param name="config_file"                         value="$(arg config_file)" />
@@ -93,7 +93,7 @@
     <!-- Launch Manager -->
     <arg name="user_cmd_service_name"              default="user_cmd" />
 
-    <node name="grasp_benchmark_manager" pkg="benchmark_grasping_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
+    <node name="grasp_benchmark_manager" pkg="grasping_benchmarks_ros" type="benchmark_ros_manager.py" ns="$(arg ns)" output="screen">
         <param name="user_cmd_service_name"         value="$(arg user_cmd_service_name)" />
         <param name="grasp_planner_service_name"    value="$(arg grasp_planner_service_name)" />
         <param name="grasp_planner_service"         value="$(arg grasp_planner_service)" />
