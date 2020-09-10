@@ -1,7 +1,7 @@
 #include <gpd_ros/grasp_messages.h>
 
 
-grasping_benchmarks_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg(const gpd::candidate::Hand& hand, const std_msgs::Header& header)
+benchmark_grasping_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMsg(const gpd::candidate::Hand& hand, const std_msgs::Header& header)
 {
   //first transform grasp orientation wrt camera
 
@@ -28,7 +28,7 @@ grasping_benchmarks_ros::BenchmarkGrasp GraspMessages::convertToBenchmarkGraspMs
   Eigen::Quaterniond quat(Eigen::Matrix3d(cam_T_grasp.block(0,0,3,3)));
 
   // create message
-  grasping_benchmarks_ros::BenchmarkGrasp msg;
+  benchmark_grasping_ros::BenchmarkGrasp msg;
 
   msg.pose.header.frame_id = header.frame_id;
   msg.pose.header.stamp = ros::Time::now();

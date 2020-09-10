@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>panda_grasp_srv</name>
+  <name>robot_grasp_srv</name>
   <version>0.0.0</version>
   <description>The service package</description>
 

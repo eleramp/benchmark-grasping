@@ -1,11 +1,11 @@
 # benchmark-grasping
 
-This repository contains a framework to benchmark different robotic grasp planning algorithms with the [Franka Emika Panda](https://www.franka.de/) under a common interface. It is designed to work with both a simulated and a real robot.
+This repository contains a framework to benchmark different robotic grasp planning algorithms with a robotic manipulator under a common interface. It is designed to work with both a simulated and a real robot.
 
 It is composed of 3 main modules:
 - [benchmark_grasping](./benchmark_grasping): a python package that provides the base interface for the grasp planners and a class for each supported algorithm.
 - [benchmark_grasping_ros](./benchmark_grasping_ros): a ROS-based framework that allows to benchmark the grasp planners on the robotic platform.
-- [docker](./docker): a collection of docker images, one for each supported grasp planner, that include i) the algorithm software and its dependencies, ii) the benchmark_grasping_ros, iii) the Panda control service server.
+- [docker](./docker): a collection of docker images, one for each supported grasp planner, that include the algorithm software and its dependencies and the benchmark_grasping_ros.
 
 The wrapped grasp planners available so far are:
 - **Dexnet**: [documentation](https://berkeleyautomation.github.io/dex-net/), [paper](https://arxiv.org/pdf/1703.09312.pdf)
@@ -45,7 +45,7 @@ Follow these instruction if you want to install only the python package without 
     help(benchmark_grasping)
     ```
 
-### grasping benchmarks ros
+### benchmark grasping ros
 Follow these instructions if you want to install also the ROS framework. To install and use this module, you need to include it in a *catkin workspace*.
 
 1. Install python3 ROS packages:
@@ -160,9 +160,9 @@ It is the main actor of the framework, connecting the different modules and send
   - `/camera/aligned_depth_to_color/image_raw`: aligned depth
   - `/camera/depth_registered/points`: point cloud
 
-  It also reads the camera pose wrt the robot base that should be part of the TF ROS tree.This pose can be publish on ros tof with the following command:
+  It also reads the camera pose wrt the robot base that should be part of the TF ROS tree. This pose can be publish on ros tof with the following command:
       ```bash
-      $ rosrun tf static_transform_publisher 0.047 -0.03496 -0.08288 0.008 -1.506 3.14 /panda_EE /camera_link 50
+      $ rosrun tf static_transform_publisher 0.047 -0.03496 -0.08288 0.008 -1.506 3.14 /robot_EE /camera_link 50
       ```
 
 2. It receives also a few commands from a user through a `user_cmd_service`. Available commands are:
@@ -178,13 +178,13 @@ It is the main actor of the framework, connecting the different modules and send
 
     Each service returns a [msg/BenchmarkGrasp.msg](./benchmark_grasping_ros/msg/BenchmarkGrasp.msg).
 
-4. Finally it connects with the Panda Control service server. It sends the grasp pose as a `geometry_msgs/PoseStamped` message. The Panda Control service server executes the grasp and return the failure/succes of the grasp.
+4. Finally it connects with the Robot Control service server. It sends the grasp pose as a `geometry_msgs/PoseStamped` message, through the service [robot_grasp_srv](./robot_grasp_srv). The Robot Control service server executes the grasp and return the failure/succes of the grasp.
 
 ### How to Run
 
-1. Run your service to control the panda. 
+1. Run your service to control the robot. 
 
-    Note: The ros services sent by the [benchmark ros manager](./benchmark_grasping_ros/benchmark_ros_manager.py) are of type [panda_grasp_srv](./panda_grasp_srv)
+    Note: The ros services sent by the [benchmark ros manager](./benchmark_grasping_ros/benchmark_ros_manager.py) are of type [robot_grasp_srv](./robot_grasp_srv)
 
 2. Run the benchmarks framework. 
     - You may need to set the correct paths to the models/config files in [benchmark_grasping_ros/launch/grasp_planning_benchmark.launch](./benchmark_grasping_ros/launch/grasp_planning_benchmark.launch)

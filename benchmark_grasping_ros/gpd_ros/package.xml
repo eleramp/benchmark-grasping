@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>grasping_benchmarks_ros</name>
+  <name>benchmark_grasping_ros</name>
   <version>0.0.0</version>
-  <description>The grasping benchmarks package</description>
+  <description>The benchmark grasping package</description>
 
   <maintainer email="elena.rampone@iit.it">Elena Rampone</maintainer>
 

@@ -36,13 +36,13 @@
 
 #include <gpd/candidate/hand.h>
 
-#include <grasping_benchmarks_ros/BenchmarkGrasp.h>
+#include <benchmark_grasping_ros/BenchmarkGrasp.h>
 #include <iostream>
 
 namespace GraspMessages
 {
 
-  grasping_benchmarks_ros::BenchmarkGrasp convertToBenchmarkGraspMsg(const gpd::candidate::Hand& hand, const std_msgs::Header& header);
+  benchmark_grasping_ros::BenchmarkGrasp convertToBenchmarkGraspMsg(const gpd::candidate::Hand& hand, const std_msgs::Header& header);
 };
 
 #endif /* GRASP_MESSAGES_H_ */
